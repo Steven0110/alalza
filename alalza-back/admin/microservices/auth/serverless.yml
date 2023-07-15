@@ -1,0 +1,119 @@
+service: auth
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-domain-manager
+
+useDotenv: true
+configValidationMode: error
+
+custom:
+  stage: ${env:STAGE}
+  domains:
+    qa: qa-admin-api.alalza.mx
+    dev: dev-admin-api.alalza.mx
+    prod: admin-api.alalza.mx
+
+  customDomain:
+    basePath: auth
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    stage: ${self:custom.stage}
+    certificateName: "*.alalza.mx"
+    hostedZoneId: us-west-2
+    createRoute53Record: false
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  profile: alalza
+  region: us-west-2
+  endpointType: EDGE
+  environment:
+    STAGE: ${env:STAGE}
+    MAILGUN_KEY: ${env:MAILGUN_KEY}
+    MAILGUN_DOMAIN: ${env:MAILGUN_DOMAIN}
+    MONGO_CONNSTRING: ${env:MONGO_CONNSTRING}
+
+  apiGateway:
+    apiKeys:
+      - name: "admin-${self:service}-${env:STAGE} API Key"
+        value: ${self:service}-${env:API_KEY}-${env:STAGE}
+    usagePlan:
+      throttle:
+        burstLimit: 50
+        rateLimit: 100
+  iam:
+    role: arn:aws:iam::596628504217:role/lambda-role
+    deploymentRole: arn:aws:iam::596628504217:role/serverless-role
+  vpc:
+    securityGroupIds:
+      - sg-06e989d9c954e3d28
+    subnetIds:
+      - subnet-04b4bc30ca3273525
+      - subnet-0eb6d557392553450
+      - subnet-0c8165249d419a254
+      - subnet-0dba7ed6f37f50bc2
+
+resources:
+  Resources:
+    GatewayResponse:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${env:ALLOWED_ORIGIN}'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        ResponseType: BAD_REQUEST_BODY
+        ResponseTemplates:
+          application/json: '{"message":$context.error.validationErrorString}'
+        RestApiId: 
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '400'
+    Forbidden:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${env:ALLOWED_ORIGIN}'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        ResponseType: INVALID_API_KEY
+        RestApiId: 
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '403'
+    Denied:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${env:ALLOWED_ORIGIN}'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        ResponseTemplates:
+          application/json: "{\"message\":$context.error.messageString, \"payload\": \"$context.authorizer.message\"}"
+        ResponseType: ACCESS_DENIED
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '401'
+    Unauthorized:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${env:ALLOWED_ORIGIN}'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        ResponseTemplates:
+          application/json: "{\"message\":$context.error.messageString, \"payload\": \"$context.authorizer.message\"}"
+        ResponseType: UNAUTHORIZED
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+        StatusCode: '401'
+
+package:
+  individually: true
+  patterns:
+    - '!./**'
+
+functions:
+  - ${file(./src/functions/a-login/function.yml)}
+  - ${file(./src/functions/authorizer/function.yml)}
+  - ${file(./src/functions/check/function.yml)}

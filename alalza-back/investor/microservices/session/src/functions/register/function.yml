@@ -1,0 +1,57 @@
+register:
+  handler: src/functions/register/index.handler
+  name: ${opt:stage}-register
+  runtime: nodejs14.x
+  memorySize: 128
+  timeout: 25
+  
+  environment:
+    COOKIE_DEF: ${env:COOKIE_DEF}
+
+  package:
+    patterns:
+      - src/functions/register/index.js
+
+  events:
+    - http:
+        method: post
+        path: register
+        cors:
+          origin: ${env:ALLOWED_ORIGIN}
+          headers:
+            - Content-Type
+            - X-Amz-Date
+            - Authorization
+            - X-Api-Key
+            - X-Amz-Security-Token
+            - X-Amz-User-Agent
+            - Access-Control-Allow-Headers
+            - Access-Control-Allow-Origin
+            - Access-Control-Allow-Credentials
+          allowCredentials: true
+        integration: lambda
+        private: true
+        request:
+          schemas:
+            application/json: ${file(./src/models/register.json)}
+
+        response:
+          headers:
+            Access-Control-Allow-Credentials: "'true'"
+          statusCodes:
+            200:
+              pattern: ''
+              template: '{"message": "Registro exitoso"}'
+              headers:
+                Set-Cookie: "integration.response.body.cookie"
+            401:  
+              pattern: '.*duplicated.*'
+              template: '{"message": "Correo ya registrado"}'
+            500: #Error
+              pattern: '.*(E|e)rror.*'
+
+  layers:
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mailgun-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:JWT-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mongo-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:SHA512-N14:1

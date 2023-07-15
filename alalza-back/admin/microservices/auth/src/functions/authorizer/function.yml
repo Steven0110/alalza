@@ -1,0 +1,17 @@
+authorizer:
+  handler: src/functions/authorizer/index.handler
+  name: ${opt:stage}-authorizer
+  runtime: nodejs14.x
+  memorySize: 128
+  timeout: 10
+
+  environment:
+    APP_URL: ${env:APP_URL}
+
+  package:
+    patterns:
+      - src/functions/authorizer/index.js
+
+  layers:
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mongo-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:JWT-N14:1

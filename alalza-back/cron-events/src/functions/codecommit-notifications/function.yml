@@ -1,0 +1,21 @@
+codecommit-notifications:
+  handler: src/functions/codecommit-notifications/index.handler
+  name: ${opt:stage}-codecommit-notifications
+  runtime: nodejs12.x
+  memorySize: 128
+  timeout: 10
+  
+  environment:
+    AWS_KEY_ID: ${env:AWS_KEY_ID}
+    AWS_SECRET: ${env:AWS_SECRET}
+
+  package:
+    include:
+      - src/functions/codecommit-notifications/index.js
+
+  events:
+    - sns: arn:aws:sns:us-west-2:596628504217:CodeCommit
+
+  layers:
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mailgun-N12:1
+    

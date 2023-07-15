@@ -1,0 +1,80 @@
+a-login:
+  handler: src/functions/a-login/index.handler
+  name: ${opt:stage}-a-login
+  runtime: nodejs14.x
+  memorySize: 128
+  timeout: 25
+  
+  environment:
+    COOKIE_DEF: ${env:COOKIE_DEF}
+
+  package:
+    patterns:
+      - src/functions/a-login/index.js
+
+  events:
+    - http:
+        method: post
+        path: admin/login
+        cors:
+          origin: ${env:ALLOWED_ORIGIN}
+          headers:
+            - Content-Type
+            - X-Amz-Date
+            - Authorization
+            - X-Api-Key
+            - X-Amz-Security-Token
+            - X-Amz-User-Agent
+            - Access-Control-Allow-Headers
+            - Access-Control-Allow-Origin
+            - Access-Control-Allow-Credentials
+          allowCredentials: true
+        integration: lambda
+        private: true
+        request:
+          schemas:
+            application/json: ${file(./src/models/login.json)}
+
+        response:
+          headers:
+            Access-Control-Allow-Credentials: "'true'"
+          statusCodes:
+            200:
+              pattern: ''
+              template: ${file(src/response/login-ok.yml)}
+              headers:
+                Set-Cookie: "integration.response.body.cookie"
+            401: #Credenciales inválidas
+              pattern: '.*password.*'
+              template: ${file(src/response/invalid-login.yml)}
+            402: #Cuenta bloqueada
+              pattern: '.*blocked.*'
+              template: '{"message": "Cuenta bloqueada"}'
+            410: #Cuenta deshabilitada
+              pattern: '.*unable.*'
+              template: '{"message": "Cuenta deshabilitada"}'
+            408: #Sesión duplicada
+              pattern: '.*multiple.*'
+              template: '{"message": "Sesión activa en otro dispositivo"}'
+            409: #OTP inválido
+              pattern: '.*badotp.*'
+              template: '{"message": "OTP inválido"}'
+            411: #Cuenta suspendida
+              pattern: '.*suspended.*'
+              template: '{"message": "Cuenta suspendida"}'
+            412: #Cuenta inactiva
+              pattern: '.*inactive.*'
+              template: '{"message": "Cuenta inactiva"}'
+            406: #OK. Solicita OTP
+              pattern: '.*otp_required.*'
+              template: '{"message": "Requiere OTP"}'
+            500: #Error
+              pattern: '.*(E|e)rror.*'
+
+  layers:
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mailgun-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:JWT-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:Mongo-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:SHA512-N14:1
+    - arn:aws:lambda:us-west-2:596628504217:layer:Speakeasy:1
+    

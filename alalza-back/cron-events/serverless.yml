@@ -1,0 +1,40 @@
+service: process
+
+plugins:
+  - serverless-dotenv-plugin
+
+useDotenv: true
+#configValidationMode: off
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  profile: alalza
+  region: us-west-2
+  endpointType: EDGE
+  environment:
+    STAGE: ${env:STAGE}
+    MAILGUN_KEY: ${env:MAILGUN_KEY}
+    MAILGUN_DOMAIN: ${env:MAILGUN_DOMAIN}
+    MONGO_CONNSTRING: ${env:MONGO_CONNSTRING}
+  iam:
+    role: arn:aws:iam::596628504217:role/lambda-role
+    deploymentRole: arn:aws:iam::596628504217:role/serverless-role
+  vpc:
+    securityGroupIds:
+      - sg-06e989d9c954e3d28
+    subnetIds:
+      - subnet-04b4bc30ca3273525
+      - subnet-0eb6d557392553450
+      - subnet-0c8165249d419a254
+      - subnet-0dba7ed6f37f50bc2
+
+package:
+  individually: true
+  exclude:
+    - ./**
+
+functions:
+  - ${file(./src/functions/codecommit-notifications/function.yml)}
+  #- ${file(./src/functions/sessionkiller/function.yml)}

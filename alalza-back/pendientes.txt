@@ -1,0 +1,1 @@
+revisar existe methodo para cerrar q-dialog
